@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package api;
+
+// 定义生成的 Go 代码放在哪个包里
+option go_package = "github.com/calendar0917/go-dfs/api";
+
+// Master 服务：元数据管理
+service MasterService {
+  // Volume 启动时向 Master 注册（心跳基础）
+  rpc RegisterNode (RegisterRequest) returns (RegisterResponse);
+}
+
+// Volume 服务：文件存储
+service VolumeService {
+  // 基础上传：简单起见，先实现小文件上传，不搞流式传输（Stream）
+  rpc UploadFile (UploadRequest) returns (UploadResponse);
+}
+
+// 注册请求
+message RegisterRequest {
+  string node_id = 1;
+  string address = 2; // 例如 "127.0.0.1:50001"
+}
+
+message RegisterResponse {
+  bool success = 1;
+}
+
+// 上传请求
+message UploadRequest {
+  string filename = 1;
+  bytes content = 2; // 文件内容
+}
+
+message UploadResponse {
+  string file_id = 1;
+  bool success = 2;
+}
