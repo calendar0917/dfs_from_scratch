@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	MasterService_RegisterNode_FullMethodName = "/api.MasterService/RegisterNode"
+	MasterService_AssignVolume_FullMethodName = "/api.MasterService/AssignVolume"
 )
 
 // MasterServiceClient is the client API for MasterService service.
@@ -30,6 +31,7 @@ const (
 type MasterServiceClient interface {
 	// Volume 启动时向 Master 注册（心跳基础）
 	RegisterNode(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
+	AssignVolume(ctx context.Context, in *AssignVolumeRequest, opts ...grpc.CallOption) (*AssignVolumeResponse, error)
 }
 
 type masterServiceClient struct {
@@ -50,6 +52,16 @@ func (c *masterServiceClient) RegisterNode(ctx context.Context, in *RegisterRequ
 	return out, nil
 }
 
+func (c *masterServiceClient) AssignVolume(ctx context.Context, in *AssignVolumeRequest, opts ...grpc.CallOption) (*AssignVolumeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AssignVolumeResponse)
+	err := c.cc.Invoke(ctx, MasterService_AssignVolume_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MasterServiceServer is the server API for MasterService service.
 // All implementations must embed UnimplementedMasterServiceServer
 // for forward compatibility.
@@ -58,6 +70,7 @@ func (c *masterServiceClient) RegisterNode(ctx context.Context, in *RegisterRequ
 type MasterServiceServer interface {
 	// Volume 启动时向 Master 注册（心跳基础）
 	RegisterNode(context.Context, *RegisterRequest) (*RegisterResponse, error)
+	AssignVolume(context.Context, *AssignVolumeRequest) (*AssignVolumeResponse, error)
 	mustEmbedUnimplementedMasterServiceServer()
 }
 
@@ -70,6 +83,9 @@ type UnimplementedMasterServiceServer struct{}
 
 func (UnimplementedMasterServiceServer) RegisterNode(context.Context, *RegisterRequest) (*RegisterResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RegisterNode not implemented")
+}
+func (UnimplementedMasterServiceServer) AssignVolume(context.Context, *AssignVolumeRequest) (*AssignVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AssignVolume not implemented")
 }
 func (UnimplementedMasterServiceServer) mustEmbedUnimplementedMasterServiceServer() {}
 func (UnimplementedMasterServiceServer) testEmbeddedByValue()                       {}
@@ -110,6 +126,24 @@ func _MasterService_RegisterNode_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MasterService_AssignVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AssignVolumeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServiceServer).AssignVolume(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MasterService_AssignVolume_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServiceServer).AssignVolume(ctx, req.(*AssignVolumeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MasterService_ServiceDesc is the grpc.ServiceDesc for MasterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -120,6 +154,10 @@ var MasterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterNode",
 			Handler:    _MasterService_RegisterNode_Handler,
+		},
+		{
+			MethodName: "AssignVolume",
+			Handler:    _MasterService_AssignVolume_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

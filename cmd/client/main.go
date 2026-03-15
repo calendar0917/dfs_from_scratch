@@ -12,38 +12,49 @@ import (
 )
 
 func main() {
-	// 1. 建立连接
-	// insecure.NewCredentials() 表示不使用 SSL/TLS 加密（开发环境常用）
-	conn, err := grpc.Dial("localhost:50052", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// 1. 问路：联系 Master
+	// 建议：地址也可以通过 flag 传入
+	masterConn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("无法连接服务器: %v", err)
+		log.Fatalf("无法连接 Master: %v", err)
 	}
-	defer conn.Close()
+	defer masterConn.Close()
 
-	// 2. 创建客户端“存根” (Stub)
-	// NewVolumeServiceClient 是 protoc 自动生成的
-	client := api.NewVolumeServiceClient(conn)
+	mClient := api.NewMasterServiceClient(masterConn)
 
-	// 3. 准备要上传的数据
-	req := &api.UploadRequest{
-		Filename: "hello_distributed.txt",
-		Content:  []byte("你好，这是我的第一个分布式文件系统测试数据！"),
-	}
+	// 设置超时并立即执行
+	mCtx, mCancel := context.WithTimeout(context.Background(), time.Second*5)
+	respMaster, err := mClient.AssignVolume(mCtx, &api.AssignVolumeRequest{
+		Filename: "hello_dist.txt",
+		FileSize: 100,
+	})
+	mCancel() // 重点：用完即毁
 
-	// 4. 调用远程方法
-	// 设置 5 秒超时，工程实践中习惯
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
-	resp, err := client.UploadFile(ctx, req)
 	if err != nil {
-		log.Fatalf("上传失败: %v", err)
+		log.Fatalf("Master 分配节点失败: %v", err)
 	}
 
-	// 5. 打印结果
-	if resp.Success {
-		log.Printf("上传成功！文件 ID: %s", resp.FileId)
-	} else {
-		log.Printf("上传失败。")
+	log.Printf("【Client】Master 指派节点: %s", respMaster.Address)
+
+	// 2. 走路：联系对应的 Volume
+	vConn, err := grpc.NewClient(respMaster.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("无法连接 Volume 节点 %s: %v", respMaster.Address, err)
 	}
+	defer vConn.Close()
+
+	vClient := api.NewVolumeServiceClient(vConn)
+	vCtx, vCancel := context.WithTimeout(context.Background(), time.Second*10) // 上传文件可以给久一点
+
+	respVolume, err := vClient.UploadFile(vCtx, &api.UploadRequest{
+		Filename: "hello_dist.txt",
+		Content:  []byte("大厂项目进阶中..."),
+	})
+	vCancel()
+
+	if err != nil || !respVolume.Success {
+		log.Fatalf("上传文件失败: %v", err)
+	}
+
+	log.Printf("上传成功！文件 ID: %s", respVolume.FileId)
 }

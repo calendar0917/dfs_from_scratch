@@ -223,6 +223,111 @@ func (x *UploadResponse) GetSuccess() bool {
 	return false
 }
 
+// 请求存储位置
+type AssignVolumeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
+	FileSize      int64                  `protobuf:"varint,2,opt,name=file_size,json=fileSize,proto3" json:"file_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AssignVolumeRequest) Reset() {
+	*x = AssignVolumeRequest{}
+	mi := &file_api_dfs_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssignVolumeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssignVolumeRequest) ProtoMessage() {}
+
+func (x *AssignVolumeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_dfs_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssignVolumeRequest.ProtoReflect.Descriptor instead.
+func (*AssignVolumeRequest) Descriptor() ([]byte, []int) {
+	return file_api_dfs_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AssignVolumeRequest) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *AssignVolumeRequest) GetFileSize() int64 {
+	if x != nil {
+		return x.FileSize
+	}
+	return 0
+}
+
+type AssignVolumeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Address       string                 `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"` // 上传凭证52
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AssignVolumeResponse) Reset() {
+	*x = AssignVolumeResponse{}
+	mi := &file_api_dfs_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssignVolumeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssignVolumeResponse) ProtoMessage() {}
+
+func (x *AssignVolumeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_dfs_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssignVolumeResponse.ProtoReflect.Descriptor instead.
+func (*AssignVolumeResponse) Descriptor() ([]byte, []int) {
+	return file_api_dfs_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AssignVolumeResponse) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+func (x *AssignVolumeResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
 var File_api_dfs_proto protoreflect.FileDescriptor
 
 const file_api_dfs_proto_rawDesc = "" +
@@ -238,9 +343,16 @@ const file_api_dfs_proto_rawDesc = "" +
 	"\acontent\x18\x02 \x01(\fR\acontent\"C\n" +
 	"\x0eUploadResponse\x12\x17\n" +
 	"\afile_id\x18\x01 \x01(\tR\x06fileId\x12\x18\n" +
-	"\asuccess\x18\x02 \x01(\bR\asuccess2L\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess\"N\n" +
+	"\x13AssignVolumeRequest\x12\x1a\n" +
+	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x1b\n" +
+	"\tfile_size\x18\x02 \x01(\x03R\bfileSize\"F\n" +
+	"\x14AssignVolumeResponse\x12\x18\n" +
+	"\aaddress\x18\x01 \x01(\tR\aaddress\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token2\x91\x01\n" +
 	"\rMasterService\x12;\n" +
-	"\fRegisterNode\x12\x14.api.RegisterRequest\x1a\x15.api.RegisterResponse2F\n" +
+	"\fRegisterNode\x12\x14.api.RegisterRequest\x1a\x15.api.RegisterResponse\x12C\n" +
+	"\fAssignVolume\x12\x18.api.AssignVolumeRequest\x1a\x19.api.AssignVolumeResponse2F\n" +
 	"\rVolumeService\x125\n" +
 	"\n" +
 	"UploadFile\x12\x12.api.UploadRequest\x1a\x13.api.UploadResponseB$Z\"github.com/calendar0917/go-dfs/apib\x06proto3"
@@ -257,20 +369,24 @@ func file_api_dfs_proto_rawDescGZIP() []byte {
 	return file_api_dfs_proto_rawDescData
 }
 
-var file_api_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_api_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_api_dfs_proto_goTypes = []any{
-	(*RegisterRequest)(nil),  // 0: api.RegisterRequest
-	(*RegisterResponse)(nil), // 1: api.RegisterResponse
-	(*UploadRequest)(nil),    // 2: api.UploadRequest
-	(*UploadResponse)(nil),   // 3: api.UploadResponse
+	(*RegisterRequest)(nil),      // 0: api.RegisterRequest
+	(*RegisterResponse)(nil),     // 1: api.RegisterResponse
+	(*UploadRequest)(nil),        // 2: api.UploadRequest
+	(*UploadResponse)(nil),       // 3: api.UploadResponse
+	(*AssignVolumeRequest)(nil),  // 4: api.AssignVolumeRequest
+	(*AssignVolumeResponse)(nil), // 5: api.AssignVolumeResponse
 }
 var file_api_dfs_proto_depIdxs = []int32{
 	0, // 0: api.MasterService.RegisterNode:input_type -> api.RegisterRequest
-	2, // 1: api.VolumeService.UploadFile:input_type -> api.UploadRequest
-	1, // 2: api.MasterService.RegisterNode:output_type -> api.RegisterResponse
-	3, // 3: api.VolumeService.UploadFile:output_type -> api.UploadResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
+	4, // 1: api.MasterService.AssignVolume:input_type -> api.AssignVolumeRequest
+	2, // 2: api.VolumeService.UploadFile:input_type -> api.UploadRequest
+	1, // 3: api.MasterService.RegisterNode:output_type -> api.RegisterResponse
+	5, // 4: api.MasterService.AssignVolume:output_type -> api.AssignVolumeResponse
+	3, // 5: api.VolumeService.UploadFile:output_type -> api.UploadResponse
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -287,7 +403,7 @@ func file_api_dfs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_dfs_proto_rawDesc), len(file_api_dfs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
