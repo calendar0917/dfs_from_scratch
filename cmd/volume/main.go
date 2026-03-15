@@ -22,21 +22,36 @@ func registerWithMaster(nodeID, myAddr, masterAddr string) {
 		return
 	}
 	defer conn.Close()
-	// 注册，带重试
 	client := api.NewMasterServiceClient(conn)
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	// 使用 Ticker 每 3 秒跳动一次
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+
+	// 立即执行一次注册（不用等 3 秒）
+	doRegister := func() bool {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
 		_, err := client.RegisterNode(ctx, &api.RegisterRequest{
 			NodeId:  nodeID,
 			Address: myAddr,
 		})
-		cancel()
-		if err == nil {
-			log.Printf("成功注册到 Master")
-			break
+		if err != nil {
+			log.Printf("注册/心跳失败: %v", err)
+			return false
 		}
-		log.Printf("注册失败： %v，2 秒后重试")
-		time.Sleep(time.Second * 2)
+		return true
+	}
+
+	// 先做第一次注册
+	for !doRegister() {
+		log.Println("等待 2 秒后重试初始注册...")
+		time.Sleep(2 * time.Second)
+	}
+	log.Println("初始注册成功，进入心跳模式")
+
+	// 周期性发送心跳
+	for range ticker.C {
+		doRegister()
 	}
 }
 
@@ -45,6 +60,7 @@ func main() {
 	nodeID := flag.String("id", "vol-1", "节点唯一标识")
 	port := flag.String("port", "50052", "Volumn 监听端口")
 	masterAddr := flag.String("master", "localhost:50051", "Master 地址")
+	flag.Parse()
 	// 自己先监听端口，然后才能向 Master 注册
 	lis, _ := net.Listen("tcp", ":"+*port)
 	s := grpc.NewServer()
