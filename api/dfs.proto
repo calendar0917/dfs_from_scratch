@@ -16,8 +16,8 @@ service MasterService {
 // Volume 服务：文件存储
 service VolumeService {
   // 基础上传：简单起见，先实现小文件上传，不搞流式传输（Stream）
-  rpc UploadFile (UploadRequest) returns (UploadResponse);
-  rpc DownloadFile (DownloadRequest) returns (DownloadResponse);
+  rpc UploadFile (stream UploadRequest) returns (UploadResponse);
+  rpc DownloadFile (DownloadRequest) returns (stream DownloadResponse);
 }
 
 // 注册请求
@@ -31,10 +31,18 @@ message RegisterResponse {
 }
 
 // 上传请求
-message UploadRequest {
+
+message Metadata {
   string filename = 1;
-  bytes content = 2; // 文件内容
-  repeated string next_targets = 3;                   // 下一个要传给谁
+  repeated string next_targets = 2;
+}
+
+message UploadRequest {
+  // 第一包先传元数据，后续再发内容
+  oneof data{
+    Metadata metadata = 1;
+    bytes chunk = 2;
+  }
 }
 
 message UploadResponse {

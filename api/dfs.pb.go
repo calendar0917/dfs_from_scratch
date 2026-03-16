@@ -118,19 +118,74 @@ func (x *RegisterResponse) GetSuccess() bool {
 	return false
 }
 
-// 上传请求
-type UploadRequest struct {
+type Metadata struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
-	Content       []byte                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`                            // 文件内容
-	NextTargets   []string               `protobuf:"bytes,3,rep,name=next_targets,json=nextTargets,proto3" json:"next_targets,omitempty"` // 下一个要传给谁
+	NextTargets   []string               `protobuf:"bytes,2,rep,name=next_targets,json=nextTargets,proto3" json:"next_targets,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Metadata) Reset() {
+	*x = Metadata{}
+	mi := &file_api_dfs_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Metadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Metadata) ProtoMessage() {}
+
+func (x *Metadata) ProtoReflect() protoreflect.Message {
+	mi := &file_api_dfs_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Metadata.ProtoReflect.Descriptor instead.
+func (*Metadata) Descriptor() ([]byte, []int) {
+	return file_api_dfs_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *Metadata) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *Metadata) GetNextTargets() []string {
+	if x != nil {
+		return x.NextTargets
+	}
+	return nil
+}
+
+type UploadRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 第一包先传元数据，后续再发内容
+	//
+	// Types that are valid to be assigned to Data:
+	//
+	//	*UploadRequest_Metadata
+	//	*UploadRequest_Chunk
+	Data          isUploadRequest_Data `protobuf_oneof:"data"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UploadRequest) Reset() {
 	*x = UploadRequest{}
-	mi := &file_api_dfs_proto_msgTypes[2]
+	mi := &file_api_dfs_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -142,7 +197,7 @@ func (x *UploadRequest) String() string {
 func (*UploadRequest) ProtoMessage() {}
 
 func (x *UploadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_dfs_proto_msgTypes[2]
+	mi := &file_api_dfs_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -155,29 +210,49 @@ func (x *UploadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadRequest.ProtoReflect.Descriptor instead.
 func (*UploadRequest) Descriptor() ([]byte, []int) {
-	return file_api_dfs_proto_rawDescGZIP(), []int{2}
+	return file_api_dfs_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *UploadRequest) GetFilename() string {
+func (x *UploadRequest) GetData() isUploadRequest_Data {
 	if x != nil {
-		return x.Filename
-	}
-	return ""
-}
-
-func (x *UploadRequest) GetContent() []byte {
-	if x != nil {
-		return x.Content
+		return x.Data
 	}
 	return nil
 }
 
-func (x *UploadRequest) GetNextTargets() []string {
+func (x *UploadRequest) GetMetadata() *Metadata {
 	if x != nil {
-		return x.NextTargets
+		if x, ok := x.Data.(*UploadRequest_Metadata); ok {
+			return x.Metadata
+		}
 	}
 	return nil
 }
+
+func (x *UploadRequest) GetChunk() []byte {
+	if x != nil {
+		if x, ok := x.Data.(*UploadRequest_Chunk); ok {
+			return x.Chunk
+		}
+	}
+	return nil
+}
+
+type isUploadRequest_Data interface {
+	isUploadRequest_Data()
+}
+
+type UploadRequest_Metadata struct {
+	Metadata *Metadata `protobuf:"bytes,1,opt,name=metadata,proto3,oneof"`
+}
+
+type UploadRequest_Chunk struct {
+	Chunk []byte `protobuf:"bytes,2,opt,name=chunk,proto3,oneof"`
+}
+
+func (*UploadRequest_Metadata) isUploadRequest_Data() {}
+
+func (*UploadRequest_Chunk) isUploadRequest_Data() {}
 
 type UploadResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -189,7 +264,7 @@ type UploadResponse struct {
 
 func (x *UploadResponse) Reset() {
 	*x = UploadResponse{}
-	mi := &file_api_dfs_proto_msgTypes[3]
+	mi := &file_api_dfs_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -201,7 +276,7 @@ func (x *UploadResponse) String() string {
 func (*UploadResponse) ProtoMessage() {}
 
 func (x *UploadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_dfs_proto_msgTypes[3]
+	mi := &file_api_dfs_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -214,7 +289,7 @@ func (x *UploadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadResponse.ProtoReflect.Descriptor instead.
 func (*UploadResponse) Descriptor() ([]byte, []int) {
-	return file_api_dfs_proto_rawDescGZIP(), []int{3}
+	return file_api_dfs_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *UploadResponse) GetFileId() string {
@@ -242,7 +317,7 @@ type AssignVolumeRequest struct {
 
 func (x *AssignVolumeRequest) Reset() {
 	*x = AssignVolumeRequest{}
-	mi := &file_api_dfs_proto_msgTypes[4]
+	mi := &file_api_dfs_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -254,7 +329,7 @@ func (x *AssignVolumeRequest) String() string {
 func (*AssignVolumeRequest) ProtoMessage() {}
 
 func (x *AssignVolumeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_dfs_proto_msgTypes[4]
+	mi := &file_api_dfs_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -267,7 +342,7 @@ func (x *AssignVolumeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssignVolumeRequest.ProtoReflect.Descriptor instead.
 func (*AssignVolumeRequest) Descriptor() ([]byte, []int) {
-	return file_api_dfs_proto_rawDescGZIP(), []int{4}
+	return file_api_dfs_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AssignVolumeRequest) GetFilename() string {
@@ -294,7 +369,7 @@ type AssignVolumeResponse struct {
 
 func (x *AssignVolumeResponse) Reset() {
 	*x = AssignVolumeResponse{}
-	mi := &file_api_dfs_proto_msgTypes[5]
+	mi := &file_api_dfs_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -306,7 +381,7 @@ func (x *AssignVolumeResponse) String() string {
 func (*AssignVolumeResponse) ProtoMessage() {}
 
 func (x *AssignVolumeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_dfs_proto_msgTypes[5]
+	mi := &file_api_dfs_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -319,7 +394,7 @@ func (x *AssignVolumeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssignVolumeResponse.ProtoReflect.Descriptor instead.
 func (*AssignVolumeResponse) Descriptor() ([]byte, []int) {
-	return file_api_dfs_proto_rawDescGZIP(), []int{5}
+	return file_api_dfs_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AssignVolumeResponse) GetAddress() []string {
@@ -346,7 +421,7 @@ type FileLocationRequest struct {
 
 func (x *FileLocationRequest) Reset() {
 	*x = FileLocationRequest{}
-	mi := &file_api_dfs_proto_msgTypes[6]
+	mi := &file_api_dfs_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -358,7 +433,7 @@ func (x *FileLocationRequest) String() string {
 func (*FileLocationRequest) ProtoMessage() {}
 
 func (x *FileLocationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_dfs_proto_msgTypes[6]
+	mi := &file_api_dfs_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -371,7 +446,7 @@ func (x *FileLocationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileLocationRequest.ProtoReflect.Descriptor instead.
 func (*FileLocationRequest) Descriptor() ([]byte, []int) {
-	return file_api_dfs_proto_rawDescGZIP(), []int{6}
+	return file_api_dfs_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *FileLocationRequest) GetFilename() string {
@@ -390,7 +465,7 @@ type FileLocationResponse struct {
 
 func (x *FileLocationResponse) Reset() {
 	*x = FileLocationResponse{}
-	mi := &file_api_dfs_proto_msgTypes[7]
+	mi := &file_api_dfs_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -402,7 +477,7 @@ func (x *FileLocationResponse) String() string {
 func (*FileLocationResponse) ProtoMessage() {}
 
 func (x *FileLocationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_dfs_proto_msgTypes[7]
+	mi := &file_api_dfs_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -415,7 +490,7 @@ func (x *FileLocationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileLocationResponse.ProtoReflect.Descriptor instead.
 func (*FileLocationResponse) Descriptor() ([]byte, []int) {
-	return file_api_dfs_proto_rawDescGZIP(), []int{7}
+	return file_api_dfs_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *FileLocationResponse) GetAddress() string {
@@ -435,7 +510,7 @@ type DownloadRequest struct {
 
 func (x *DownloadRequest) Reset() {
 	*x = DownloadRequest{}
-	mi := &file_api_dfs_proto_msgTypes[8]
+	mi := &file_api_dfs_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -447,7 +522,7 @@ func (x *DownloadRequest) String() string {
 func (*DownloadRequest) ProtoMessage() {}
 
 func (x *DownloadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_dfs_proto_msgTypes[8]
+	mi := &file_api_dfs_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -460,7 +535,7 @@ func (x *DownloadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DownloadRequest.ProtoReflect.Descriptor instead.
 func (*DownloadRequest) Descriptor() ([]byte, []int) {
-	return file_api_dfs_proto_rawDescGZIP(), []int{8}
+	return file_api_dfs_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DownloadRequest) GetFilename() string {
@@ -479,7 +554,7 @@ type DownloadResponse struct {
 
 func (x *DownloadResponse) Reset() {
 	*x = DownloadResponse{}
-	mi := &file_api_dfs_proto_msgTypes[9]
+	mi := &file_api_dfs_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -491,7 +566,7 @@ func (x *DownloadResponse) String() string {
 func (*DownloadResponse) ProtoMessage() {}
 
 func (x *DownloadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_dfs_proto_msgTypes[9]
+	mi := &file_api_dfs_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -504,7 +579,7 @@ func (x *DownloadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DownloadResponse.ProtoReflect.Descriptor instead.
 func (*DownloadResponse) Descriptor() ([]byte, []int) {
-	return file_api_dfs_proto_rawDescGZIP(), []int{9}
+	return file_api_dfs_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *DownloadResponse) GetContent() []byte {
@@ -523,11 +598,14 @@ const file_api_dfs_proto_rawDesc = "" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\tR\aaddress\",\n" +
 	"\x10RegisterResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"h\n" +
-	"\rUploadRequest\x12\x1a\n" +
-	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\fR\acontent\x12!\n" +
-	"\fnext_targets\x18\x03 \x03(\tR\vnextTargets\"C\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"I\n" +
+	"\bMetadata\x12\x1a\n" +
+	"\bfilename\x18\x01 \x01(\tR\bfilename\x12!\n" +
+	"\fnext_targets\x18\x02 \x03(\tR\vnextTargets\"\\\n" +
+	"\rUploadRequest\x12+\n" +
+	"\bmetadata\x18\x01 \x01(\v2\r.api.MetadataH\x00R\bmetadata\x12\x16\n" +
+	"\x05chunk\x18\x02 \x01(\fH\x00R\x05chunkB\x06\n" +
+	"\x04data\"C\n" +
 	"\x0eUploadResponse\x12\x17\n" +
 	"\afile_id\x18\x01 \x01(\tR\x06fileId\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\"N\n" +
@@ -548,11 +626,11 @@ const file_api_dfs_proto_rawDesc = "" +
 	"\rMasterService\x12;\n" +
 	"\fRegisterNode\x12\x14.api.RegisterRequest\x1a\x15.api.RegisterResponse\x12C\n" +
 	"\fAssignVolume\x12\x18.api.AssignVolumeRequest\x1a\x19.api.AssignVolumeResponse\x12F\n" +
-	"\x0fGetFileLocation\x12\x18.api.FileLocationRequest\x1a\x19.api.FileLocationResponse2\x83\x01\n" +
-	"\rVolumeService\x125\n" +
+	"\x0fGetFileLocation\x12\x18.api.FileLocationRequest\x1a\x19.api.FileLocationResponse2\x87\x01\n" +
+	"\rVolumeService\x127\n" +
 	"\n" +
-	"UploadFile\x12\x12.api.UploadRequest\x1a\x13.api.UploadResponse\x12;\n" +
-	"\fDownloadFile\x12\x14.api.DownloadRequest\x1a\x15.api.DownloadResponseB$Z\"github.com/calendar0917/go-dfs/apib\x06proto3"
+	"UploadFile\x12\x12.api.UploadRequest\x1a\x13.api.UploadResponse(\x01\x12=\n" +
+	"\fDownloadFile\x12\x14.api.DownloadRequest\x1a\x15.api.DownloadResponse0\x01B$Z\"github.com/calendar0917/go-dfs/apib\x06proto3"
 
 var (
 	file_api_dfs_proto_rawDescOnce sync.Once
@@ -566,35 +644,37 @@ func file_api_dfs_proto_rawDescGZIP() []byte {
 	return file_api_dfs_proto_rawDescData
 }
 
-var file_api_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_api_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_api_dfs_proto_goTypes = []any{
 	(*RegisterRequest)(nil),      // 0: api.RegisterRequest
 	(*RegisterResponse)(nil),     // 1: api.RegisterResponse
-	(*UploadRequest)(nil),        // 2: api.UploadRequest
-	(*UploadResponse)(nil),       // 3: api.UploadResponse
-	(*AssignVolumeRequest)(nil),  // 4: api.AssignVolumeRequest
-	(*AssignVolumeResponse)(nil), // 5: api.AssignVolumeResponse
-	(*FileLocationRequest)(nil),  // 6: api.FileLocationRequest
-	(*FileLocationResponse)(nil), // 7: api.FileLocationResponse
-	(*DownloadRequest)(nil),      // 8: api.DownloadRequest
-	(*DownloadResponse)(nil),     // 9: api.DownloadResponse
+	(*Metadata)(nil),             // 2: api.Metadata
+	(*UploadRequest)(nil),        // 3: api.UploadRequest
+	(*UploadResponse)(nil),       // 4: api.UploadResponse
+	(*AssignVolumeRequest)(nil),  // 5: api.AssignVolumeRequest
+	(*AssignVolumeResponse)(nil), // 6: api.AssignVolumeResponse
+	(*FileLocationRequest)(nil),  // 7: api.FileLocationRequest
+	(*FileLocationResponse)(nil), // 8: api.FileLocationResponse
+	(*DownloadRequest)(nil),      // 9: api.DownloadRequest
+	(*DownloadResponse)(nil),     // 10: api.DownloadResponse
 }
 var file_api_dfs_proto_depIdxs = []int32{
-	0, // 0: api.MasterService.RegisterNode:input_type -> api.RegisterRequest
-	4, // 1: api.MasterService.AssignVolume:input_type -> api.AssignVolumeRequest
-	6, // 2: api.MasterService.GetFileLocation:input_type -> api.FileLocationRequest
-	2, // 3: api.VolumeService.UploadFile:input_type -> api.UploadRequest
-	8, // 4: api.VolumeService.DownloadFile:input_type -> api.DownloadRequest
-	1, // 5: api.MasterService.RegisterNode:output_type -> api.RegisterResponse
-	5, // 6: api.MasterService.AssignVolume:output_type -> api.AssignVolumeResponse
-	7, // 7: api.MasterService.GetFileLocation:output_type -> api.FileLocationResponse
-	3, // 8: api.VolumeService.UploadFile:output_type -> api.UploadResponse
-	9, // 9: api.VolumeService.DownloadFile:output_type -> api.DownloadResponse
-	5, // [5:10] is the sub-list for method output_type
-	0, // [0:5] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2,  // 0: api.UploadRequest.metadata:type_name -> api.Metadata
+	0,  // 1: api.MasterService.RegisterNode:input_type -> api.RegisterRequest
+	5,  // 2: api.MasterService.AssignVolume:input_type -> api.AssignVolumeRequest
+	7,  // 3: api.MasterService.GetFileLocation:input_type -> api.FileLocationRequest
+	3,  // 4: api.VolumeService.UploadFile:input_type -> api.UploadRequest
+	9,  // 5: api.VolumeService.DownloadFile:input_type -> api.DownloadRequest
+	1,  // 6: api.MasterService.RegisterNode:output_type -> api.RegisterResponse
+	6,  // 7: api.MasterService.AssignVolume:output_type -> api.AssignVolumeResponse
+	8,  // 8: api.MasterService.GetFileLocation:output_type -> api.FileLocationResponse
+	4,  // 9: api.VolumeService.UploadFile:output_type -> api.UploadResponse
+	10, // 10: api.VolumeService.DownloadFile:output_type -> api.DownloadResponse
+	6,  // [6:11] is the sub-list for method output_type
+	1,  // [1:6] is the sub-list for method input_type
+	1,  // [1:1] is the sub-list for extension type_name
+	1,  // [1:1] is the sub-list for extension extendee
+	0,  // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_api_dfs_proto_init() }
@@ -602,13 +682,17 @@ func file_api_dfs_proto_init() {
 	if File_api_dfs_proto != nil {
 		return
 	}
+	file_api_dfs_proto_msgTypes[3].OneofWrappers = []any{
+		(*UploadRequest_Metadata)(nil),
+		(*UploadRequest_Chunk)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_dfs_proto_rawDesc), len(file_api_dfs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

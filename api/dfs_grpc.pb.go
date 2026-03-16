@@ -214,8 +214,8 @@ const (
 // Volume 服务：文件存储
 type VolumeServiceClient interface {
 	// 基础上传：简单起见，先实现小文件上传，不搞流式传输（Stream）
-	UploadFile(ctx context.Context, in *UploadRequest, opts ...grpc.CallOption) (*UploadResponse, error)
-	DownloadFile(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (*DownloadResponse, error)
+	UploadFile(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[UploadRequest, UploadResponse], error)
+	DownloadFile(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DownloadResponse], error)
 }
 
 type volumeServiceClient struct {
@@ -226,25 +226,37 @@ func NewVolumeServiceClient(cc grpc.ClientConnInterface) VolumeServiceClient {
 	return &volumeServiceClient{cc}
 }
 
-func (c *volumeServiceClient) UploadFile(ctx context.Context, in *UploadRequest, opts ...grpc.CallOption) (*UploadResponse, error) {
+func (c *volumeServiceClient) UploadFile(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[UploadRequest, UploadResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UploadResponse)
-	err := c.cc.Invoke(ctx, VolumeService_UploadFile_FullMethodName, in, out, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &VolumeService_ServiceDesc.Streams[0], VolumeService_UploadFile_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &grpc.GenericClientStream[UploadRequest, UploadResponse]{ClientStream: stream}
+	return x, nil
 }
 
-func (c *volumeServiceClient) DownloadFile(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (*DownloadResponse, error) {
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type VolumeService_UploadFileClient = grpc.ClientStreamingClient[UploadRequest, UploadResponse]
+
+func (c *volumeServiceClient) DownloadFile(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DownloadResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DownloadResponse)
-	err := c.cc.Invoke(ctx, VolumeService_DownloadFile_FullMethodName, in, out, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &VolumeService_ServiceDesc.Streams[1], VolumeService_DownloadFile_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &grpc.GenericClientStream[DownloadRequest, DownloadResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type VolumeService_DownloadFileClient = grpc.ServerStreamingClient[DownloadResponse]
 
 // VolumeServiceServer is the server API for VolumeService service.
 // All implementations must embed UnimplementedVolumeServiceServer
@@ -253,8 +265,8 @@ func (c *volumeServiceClient) DownloadFile(ctx context.Context, in *DownloadRequ
 // Volume 服务：文件存储
 type VolumeServiceServer interface {
 	// 基础上传：简单起见，先实现小文件上传，不搞流式传输（Stream）
-	UploadFile(context.Context, *UploadRequest) (*UploadResponse, error)
-	DownloadFile(context.Context, *DownloadRequest) (*DownloadResponse, error)
+	UploadFile(grpc.ClientStreamingServer[UploadRequest, UploadResponse]) error
+	DownloadFile(*DownloadRequest, grpc.ServerStreamingServer[DownloadResponse]) error
 	mustEmbedUnimplementedVolumeServiceServer()
 }
 
@@ -265,11 +277,11 @@ type VolumeServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedVolumeServiceServer struct{}
 
-func (UnimplementedVolumeServiceServer) UploadFile(context.Context, *UploadRequest) (*UploadResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method UploadFile not implemented")
+func (UnimplementedVolumeServiceServer) UploadFile(grpc.ClientStreamingServer[UploadRequest, UploadResponse]) error {
+	return status.Error(codes.Unimplemented, "method UploadFile not implemented")
 }
-func (UnimplementedVolumeServiceServer) DownloadFile(context.Context, *DownloadRequest) (*DownloadResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method DownloadFile not implemented")
+func (UnimplementedVolumeServiceServer) DownloadFile(*DownloadRequest, grpc.ServerStreamingServer[DownloadResponse]) error {
+	return status.Error(codes.Unimplemented, "method DownloadFile not implemented")
 }
 func (UnimplementedVolumeServiceServer) mustEmbedUnimplementedVolumeServiceServer() {}
 func (UnimplementedVolumeServiceServer) testEmbeddedByValue()                       {}
@@ -292,41 +304,23 @@ func RegisterVolumeServiceServer(s grpc.ServiceRegistrar, srv VolumeServiceServe
 	s.RegisterService(&VolumeService_ServiceDesc, srv)
 }
 
-func _VolumeService_UploadFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UploadRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(VolumeServiceServer).UploadFile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: VolumeService_UploadFile_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VolumeServiceServer).UploadFile(ctx, req.(*UploadRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+func _VolumeService_UploadFile_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(VolumeServiceServer).UploadFile(&grpc.GenericServerStream[UploadRequest, UploadResponse]{ServerStream: stream})
 }
 
-func _VolumeService_DownloadFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DownloadRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type VolumeService_UploadFileServer = grpc.ClientStreamingServer[UploadRequest, UploadResponse]
+
+func _VolumeService_DownloadFile_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(DownloadRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(VolumeServiceServer).DownloadFile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: VolumeService_DownloadFile_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VolumeServiceServer).DownloadFile(ctx, req.(*DownloadRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(VolumeServiceServer).DownloadFile(m, &grpc.GenericServerStream[DownloadRequest, DownloadResponse]{ServerStream: stream})
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type VolumeService_DownloadFileServer = grpc.ServerStreamingServer[DownloadResponse]
 
 // VolumeService_ServiceDesc is the grpc.ServiceDesc for VolumeService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -334,16 +328,18 @@ func _VolumeService_DownloadFile_Handler(srv interface{}, ctx context.Context, d
 var VolumeService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "api.VolumeService",
 	HandlerType: (*VolumeServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "UploadFile",
-			Handler:    _VolumeService_UploadFile_Handler,
+			StreamName:    "UploadFile",
+			Handler:       _VolumeService_UploadFile_Handler,
+			ClientStreams: true,
 		},
 		{
-			MethodName: "DownloadFile",
-			Handler:    _VolumeService_DownloadFile_Handler,
+			StreamName:    "DownloadFile",
+			Handler:       _VolumeService_DownloadFile_Handler,
+			ServerStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "api/dfs.proto",
 }
