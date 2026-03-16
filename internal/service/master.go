@@ -22,16 +22,18 @@ type MasterServer struct {
 	api.UnimplementedMasterServiceServer
 	// 实现 api.VolumeServiceServer 接口
 	// 接受 RegisterRequest，返回 RegisterResponse
-	mu       sync.RWMutex // 读写锁提高性能
-	nodes    map[string]*NodeInfo
-	nodeList []string // 快速轮询，只存 ID
-	index    int      // 轮训序号
+	mu           sync.RWMutex // 读写锁提高性能
+	nodes        map[string]*NodeInfo
+	nodeList     []string            // 快速轮询，只存 ID
+	index        int                 // 轮训序号
+	fileMetadata map[string][]string // 存储元数据，当前是地址
 }
 
 // NewMasterServer 是“构造函数”模式，确保 Map 被正确初始化
 func NewMasterServer() *MasterServer {
 	s := &MasterServer{
-		nodes: make(map[string]*NodeInfo),
+		nodes:        make(map[string]*NodeInfo),
+		fileMetadata: make(map[string][]string),
 	}
 	// 启动心跳检查协程
 	go s.startHealthChecker()
@@ -114,19 +116,30 @@ func (s *MasterServer) RegisterNode(ctx context.Context, req *api.RegisterReques
 }
 
 func (s *MasterServer) AssignVolume(ctx context.Context, req *api.AssignVolumeRequest) (*api.AssignVolumeResponse, error) {
-	// 分配节点给 client
-	s.mu.RLock() // 读锁
-	defer s.mu.RUnlock()
-	if len(s.nodes) == 0 {
+	s.mu.Lock() // 改为写锁，因为我们要更新 index
+	defer s.mu.Unlock()
+
+	nodeCount := len(s.nodeList)
+	if nodeCount == 0 {
 		return nil, status.Error(codes.Unavailable, "没有可用的存储节点")
 	}
-	id := s.nodeList[s.index%len(s.nodeList)]
-	addr := s.nodes[id].Address
-	s.index++
 
-	log.Printf("【Master】为文件 %s 分配了节点 %s", req.Filename, addr)
+	// 确定实际能提供的副本数（不能超过当前拥有的节点总数）
+	replicationFactor := 3
+	if nodeCount < replicationFactor {
+		return nil, status.Errorf(codes.ResourceExhausted, "可用节点不足(仅有 %d 个)，无法满足 %d 副本要求", nodeCount, replicationFactor)
+	}
+
+	var pickedAddresses []string
+	for i := 0; i < replicationFactor; i++ {
+		id := s.nodeList[s.index%nodeCount]
+		pickedAddresses = append(pickedAddresses, s.nodes[id].Address)
+		s.index++ // 移动指针，实现真正的轮询
+	}
+
+	log.Printf("[调度] 文件 %s 分配链路: %v", req.Filename, pickedAddresses)
 	return &api.AssignVolumeResponse{
-		Address: addr,
+		Address: pickedAddresses, // 注意：proto 里现在是 repeated，对应切片
 		Token:   "todo-token",
 	}, nil
 }

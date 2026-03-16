@@ -32,6 +32,7 @@ message RegisterResponse {
 message UploadRequest {
   string filename = 1;
   bytes content = 2; // 文件内容
+  repeated string next_targets = 3;                   // 下一个要传给谁
 }
 
 message UploadResponse {
@@ -46,6 +47,6 @@ message AssignVolumeRequest {
 }
 
 message AssignVolumeResponse {
-  string address = 1;
+  repeated string address = 1;
   string token = 2; // 上传凭证52
 }

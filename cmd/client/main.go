@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	// 1. 问路：联系 Master
+	// 问路：联系 Master
 	// 建议：地址也可以通过 flag 传入
 	masterConn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -36,8 +36,9 @@ func main() {
 
 	log.Printf("【Client】Master 指派节点: %s", respMaster.Address)
 
-	// 2. 走路：联系对应的 Volume
-	vConn, err := grpc.NewClient(respMaster.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// 联系对应的 Volume
+	// 现在的 volume 是名单列表
+	vConn, err := grpc.NewClient(respMaster.Address[0], grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("无法连接 Volume 节点 %s: %v", respMaster.Address, err)
 	}
@@ -47,8 +48,9 @@ func main() {
 	vCtx, vCancel := context.WithTimeout(context.Background(), time.Second*10) // 上传文件可以给久一点
 
 	respVolume, err := vClient.UploadFile(vCtx, &api.UploadRequest{
-		Filename: "hello_dist.txt",
-		Content:  []byte("大厂项目进阶中..."),
+		Filename:    "hello_lianshi.txt",
+		Content:     []byte("test"),
+		NextTargets: respMaster.Address,
 	})
 	vCancel()
 

@@ -122,7 +122,8 @@ func (x *RegisterResponse) GetSuccess() bool {
 type UploadRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
-	Content       []byte                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"` // 文件内容
+	Content       []byte                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`                            // 文件内容
+	NextTargets   []string               `protobuf:"bytes,3,rep,name=next_targets,json=nextTargets,proto3" json:"next_targets,omitempty"` // 下一个要传给谁
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -167,6 +168,13 @@ func (x *UploadRequest) GetFilename() string {
 func (x *UploadRequest) GetContent() []byte {
 	if x != nil {
 		return x.Content
+	}
+	return nil
+}
+
+func (x *UploadRequest) GetNextTargets() []string {
+	if x != nil {
+		return x.NextTargets
 	}
 	return nil
 }
@@ -278,7 +286,7 @@ func (x *AssignVolumeRequest) GetFileSize() int64 {
 
 type AssignVolumeResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Address       string                 `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
+	Address       []string               `protobuf:"bytes,1,rep,name=address,proto3" json:"address,omitempty"`
 	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"` // 上传凭证52
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -314,11 +322,11 @@ func (*AssignVolumeResponse) Descriptor() ([]byte, []int) {
 	return file_api_dfs_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *AssignVolumeResponse) GetAddress() string {
+func (x *AssignVolumeResponse) GetAddress() []string {
 	if x != nil {
 		return x.Address
 	}
-	return ""
+	return nil
 }
 
 func (x *AssignVolumeResponse) GetToken() string {
@@ -337,10 +345,11 @@ const file_api_dfs_proto_rawDesc = "" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\tR\aaddress\",\n" +
 	"\x10RegisterResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"E\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"h\n" +
 	"\rUploadRequest\x12\x1a\n" +
 	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\fR\acontent\"C\n" +
+	"\acontent\x18\x02 \x01(\fR\acontent\x12!\n" +
+	"\fnext_targets\x18\x03 \x03(\tR\vnextTargets\"C\n" +
 	"\x0eUploadResponse\x12\x17\n" +
 	"\afile_id\x18\x01 \x01(\tR\x06fileId\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\"N\n" +
@@ -348,7 +357,7 @@ const file_api_dfs_proto_rawDesc = "" +
 	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x1b\n" +
 	"\tfile_size\x18\x02 \x01(\x03R\bfileSize\"F\n" +
 	"\x14AssignVolumeResponse\x12\x18\n" +
-	"\aaddress\x18\x01 \x01(\tR\aaddress\x12\x14\n" +
+	"\aaddress\x18\x01 \x03(\tR\aaddress\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token2\x91\x01\n" +
 	"\rMasterService\x12;\n" +
 	"\fRegisterNode\x12\x14.api.RegisterRequest\x1a\x15.api.RegisterResponse\x12C\n" +
