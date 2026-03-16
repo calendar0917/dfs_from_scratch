@@ -10,12 +10,14 @@ service MasterService {
   // Volume 启动时向 Master 注册（心跳基础）
   rpc RegisterNode (RegisterRequest) returns (RegisterResponse);
   rpc AssignVolume (AssignVolumeRequest) returns (AssignVolumeResponse);
+  rpc GetFileLocation (FileLocationRequest) returns (FileLocationResponse);
 }
 
 // Volume 服务：文件存储
 service VolumeService {
   // 基础上传：简单起见，先实现小文件上传，不搞流式传输（Stream）
   rpc UploadFile (UploadRequest) returns (UploadResponse);
+  rpc DownloadFile (DownloadRequest) returns (DownloadResponse);
 }
 
 // 注册请求
@@ -49,4 +51,22 @@ message AssignVolumeRequest {
 message AssignVolumeResponse {
   repeated string address = 1;
   string token = 2; // 上传凭证52
+}
+
+// 请求文件位置
+message FileLocationRequest {
+  string filename = 1;
+}
+
+message FileLocationResponse {
+  string address = 1; // 只选出一个地址返回
+}
+
+// 请求下载文件，和 volume 交互
+message DownloadRequest {
+  string filename = 1;
+}
+
+message DownloadResponse {
+  bytes content = 1;
 }

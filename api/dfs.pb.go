@@ -336,6 +336,184 @@ func (x *AssignVolumeResponse) GetToken() string {
 	return ""
 }
 
+// 请求文件位置
+type FileLocationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FileLocationRequest) Reset() {
+	*x = FileLocationRequest{}
+	mi := &file_api_dfs_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FileLocationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileLocationRequest) ProtoMessage() {}
+
+func (x *FileLocationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_dfs_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileLocationRequest.ProtoReflect.Descriptor instead.
+func (*FileLocationRequest) Descriptor() ([]byte, []int) {
+	return file_api_dfs_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *FileLocationRequest) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+type FileLocationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Address       string                 `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"` // 只选出一个地址返回
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FileLocationResponse) Reset() {
+	*x = FileLocationResponse{}
+	mi := &file_api_dfs_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FileLocationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileLocationResponse) ProtoMessage() {}
+
+func (x *FileLocationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_dfs_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileLocationResponse.ProtoReflect.Descriptor instead.
+func (*FileLocationResponse) Descriptor() ([]byte, []int) {
+	return file_api_dfs_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *FileLocationResponse) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+// 请求下载文件，和 volume 交互
+type DownloadRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DownloadRequest) Reset() {
+	*x = DownloadRequest{}
+	mi := &file_api_dfs_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DownloadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DownloadRequest) ProtoMessage() {}
+
+func (x *DownloadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_dfs_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DownloadRequest.ProtoReflect.Descriptor instead.
+func (*DownloadRequest) Descriptor() ([]byte, []int) {
+	return file_api_dfs_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *DownloadRequest) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+type DownloadResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Content       []byte                 `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DownloadResponse) Reset() {
+	*x = DownloadResponse{}
+	mi := &file_api_dfs_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DownloadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DownloadResponse) ProtoMessage() {}
+
+func (x *DownloadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_dfs_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DownloadResponse.ProtoReflect.Descriptor instead.
+func (*DownloadResponse) Descriptor() ([]byte, []int) {
+	return file_api_dfs_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *DownloadResponse) GetContent() []byte {
+	if x != nil {
+		return x.Content
+	}
+	return nil
+}
+
 var File_api_dfs_proto protoreflect.FileDescriptor
 
 const file_api_dfs_proto_rawDesc = "" +
@@ -358,13 +536,23 @@ const file_api_dfs_proto_rawDesc = "" +
 	"\tfile_size\x18\x02 \x01(\x03R\bfileSize\"F\n" +
 	"\x14AssignVolumeResponse\x12\x18\n" +
 	"\aaddress\x18\x01 \x03(\tR\aaddress\x12\x14\n" +
-	"\x05token\x18\x02 \x01(\tR\x05token2\x91\x01\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"1\n" +
+	"\x13FileLocationRequest\x12\x1a\n" +
+	"\bfilename\x18\x01 \x01(\tR\bfilename\"0\n" +
+	"\x14FileLocationResponse\x12\x18\n" +
+	"\aaddress\x18\x01 \x01(\tR\aaddress\"-\n" +
+	"\x0fDownloadRequest\x12\x1a\n" +
+	"\bfilename\x18\x01 \x01(\tR\bfilename\",\n" +
+	"\x10DownloadResponse\x12\x18\n" +
+	"\acontent\x18\x01 \x01(\fR\acontent2\xd9\x01\n" +
 	"\rMasterService\x12;\n" +
 	"\fRegisterNode\x12\x14.api.RegisterRequest\x1a\x15.api.RegisterResponse\x12C\n" +
-	"\fAssignVolume\x12\x18.api.AssignVolumeRequest\x1a\x19.api.AssignVolumeResponse2F\n" +
+	"\fAssignVolume\x12\x18.api.AssignVolumeRequest\x1a\x19.api.AssignVolumeResponse\x12F\n" +
+	"\x0fGetFileLocation\x12\x18.api.FileLocationRequest\x1a\x19.api.FileLocationResponse2\x83\x01\n" +
 	"\rVolumeService\x125\n" +
 	"\n" +
-	"UploadFile\x12\x12.api.UploadRequest\x1a\x13.api.UploadResponseB$Z\"github.com/calendar0917/go-dfs/apib\x06proto3"
+	"UploadFile\x12\x12.api.UploadRequest\x1a\x13.api.UploadResponse\x12;\n" +
+	"\fDownloadFile\x12\x14.api.DownloadRequest\x1a\x15.api.DownloadResponseB$Z\"github.com/calendar0917/go-dfs/apib\x06proto3"
 
 var (
 	file_api_dfs_proto_rawDescOnce sync.Once
@@ -378,7 +566,7 @@ func file_api_dfs_proto_rawDescGZIP() []byte {
 	return file_api_dfs_proto_rawDescData
 }
 
-var file_api_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_api_dfs_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_api_dfs_proto_goTypes = []any{
 	(*RegisterRequest)(nil),      // 0: api.RegisterRequest
 	(*RegisterResponse)(nil),     // 1: api.RegisterResponse
@@ -386,16 +574,24 @@ var file_api_dfs_proto_goTypes = []any{
 	(*UploadResponse)(nil),       // 3: api.UploadResponse
 	(*AssignVolumeRequest)(nil),  // 4: api.AssignVolumeRequest
 	(*AssignVolumeResponse)(nil), // 5: api.AssignVolumeResponse
+	(*FileLocationRequest)(nil),  // 6: api.FileLocationRequest
+	(*FileLocationResponse)(nil), // 7: api.FileLocationResponse
+	(*DownloadRequest)(nil),      // 8: api.DownloadRequest
+	(*DownloadResponse)(nil),     // 9: api.DownloadResponse
 }
 var file_api_dfs_proto_depIdxs = []int32{
 	0, // 0: api.MasterService.RegisterNode:input_type -> api.RegisterRequest
 	4, // 1: api.MasterService.AssignVolume:input_type -> api.AssignVolumeRequest
-	2, // 2: api.VolumeService.UploadFile:input_type -> api.UploadRequest
-	1, // 3: api.MasterService.RegisterNode:output_type -> api.RegisterResponse
-	5, // 4: api.MasterService.AssignVolume:output_type -> api.AssignVolumeResponse
-	3, // 5: api.VolumeService.UploadFile:output_type -> api.UploadResponse
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
+	6, // 2: api.MasterService.GetFileLocation:input_type -> api.FileLocationRequest
+	2, // 3: api.VolumeService.UploadFile:input_type -> api.UploadRequest
+	8, // 4: api.VolumeService.DownloadFile:input_type -> api.DownloadRequest
+	1, // 5: api.MasterService.RegisterNode:output_type -> api.RegisterResponse
+	5, // 6: api.MasterService.AssignVolume:output_type -> api.AssignVolumeResponse
+	7, // 7: api.MasterService.GetFileLocation:output_type -> api.FileLocationResponse
+	3, // 8: api.VolumeService.UploadFile:output_type -> api.UploadResponse
+	9, // 9: api.VolumeService.DownloadFile:output_type -> api.DownloadResponse
+	5, // [5:10] is the sub-list for method output_type
+	0, // [0:5] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -412,7 +608,7 @@ func file_api_dfs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_dfs_proto_rawDesc), len(file_api_dfs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

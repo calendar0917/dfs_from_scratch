@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"log"
+	"math/rand"
+	"os"
 	"sync"
 	"time"
 
@@ -27,6 +30,17 @@ type MasterServer struct {
 	nodeList     []string            // 快速轮询，只存 ID
 	index        int                 // 轮训序号
 	fileMetadata map[string][]string // 存储元数据，当前是地址
+	persistPath  string              // 持久化位置
+}
+
+// 持久化
+func (s *MasterServer) SaveToDisk() error {
+	data, err := json.Marshal(s.fileMetadata)
+	if err != nil {
+		return err
+	}
+	// 原子性写入：会先写个临时文件再 Rename，防止写入一半断电
+	return os.WriteFile(s.persistPath, data, 0o644)
 }
 
 // NewMasterServer 是“构造函数”模式，确保 Map 被正确初始化
@@ -136,10 +150,26 @@ func (s *MasterServer) AssignVolume(ctx context.Context, req *api.AssignVolumeRe
 		pickedAddresses = append(pickedAddresses, s.nodes[id].Address)
 		s.index++ // 移动指针，实现真正的轮询
 	}
-
+	// 记录元数据
+	s.fileMetadata[req.Filename] = pickedAddresses
 	log.Printf("[调度] 文件 %s 分配链路: %v", req.Filename, pickedAddresses)
 	return &api.AssignVolumeResponse{
 		Address: pickedAddresses, // 注意：proto 里现在是 repeated，对应切片
 		Token:   "todo-token",
 	}, nil
+}
+
+func (s *MasterServer) GetFileLocation(ctx context.Context, req *api.FileLocationRequest) (*api.FileLocationResponse, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	addrs, ok := s.fileMetadata[req.Filename]
+	if !ok || len(addrs) == 0 {
+		return nil, status.Error(codes.NotFound, "文件元数据不存在")
+	}
+
+	// 简单的负载均衡，随机选一个副本给客户端
+	selectedAddr := addrs[rand.Intn(len(addrs))]
+
+	return &api.FileLocationResponse{Address: selectedAddr}, nil
 }

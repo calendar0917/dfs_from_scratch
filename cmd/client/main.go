@@ -25,7 +25,7 @@ func main() {
 	// 设置超时并立即执行
 	mCtx, mCancel := context.WithTimeout(context.Background(), time.Second*5)
 	respMaster, err := mClient.AssignVolume(mCtx, &api.AssignVolumeRequest{
-		Filename: "hello_dist.txt",
+		Filename: "hello_lianshi.txt",
 		FileSize: 100,
 	})
 	mCancel() // 重点：用完即毁
@@ -59,4 +59,40 @@ func main() {
 	}
 
 	log.Printf("上传成功！文件 ID: %s", respVolume.FileId)
+	// --- 3. 下载逻辑：闭环验证 ---
+	log.Println("\n-------------------")
+	log.Println("开始执行下载验证...")
+
+	// A. 问路：问 Master 文件在哪
+	mCtxGet, mCancelGet := context.WithTimeout(context.Background(), time.Second*5)
+	respLoc, err := mClient.GetFileLocation(mCtxGet, &api.FileLocationRequest{
+		Filename: "hello_lianshi.txt", // 必须和刚才上传的文件名一致
+	})
+	mCancelGet()
+
+	if err != nil {
+		log.Fatalf("Master 查找文件失败: %v", err)
+	}
+	log.Printf("【Client】Master 告知下载地址: %s", respLoc.Address)
+
+	// B. 走路：连接被指派的 Volume
+	vConnDown, err := grpc.NewClient(respLoc.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("无法连接下载节点 %s: %v", respLoc.Address, err)
+	}
+	defer vConnDown.Close()
+
+	vClientDown := api.NewVolumeServiceClient(vConnDown)
+	vCtxDown, vCancelDown := context.WithTimeout(context.Background(), time.Second*5)
+	respDown, err := vClientDown.DownloadFile(vCtxDown, &api.DownloadRequest{
+		Filename: "hello_lianshi.txt",
+	})
+	vCancelDown()
+
+	if err != nil {
+		log.Fatalf("下载文件失败: %v", err)
+	}
+
+	// C. 验证内容
+	log.Printf("下载成功！内容为: %s", string(respDown.Content))
 }

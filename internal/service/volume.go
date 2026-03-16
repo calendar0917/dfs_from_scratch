@@ -76,3 +76,19 @@ func (s *VolumeServer) UploadFile(ctx context.Context, req *api.UploadRequest) (
 		Success: true,
 	}, nil
 }
+
+func (s *VolumeServer) DownloadFile(ctx context.Context, req *api.DownloadRequest) (*api.DownloadResponse, error) {
+	savePath := filepath.Join(s.StorageDir, req.Filename)
+
+	// 读取本地文件
+	content, err := os.ReadFile(savePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, status.Error(codes.NotFound, "文件不存在")
+		}
+		return nil, status.Errorf(codes.Internal, "读取失败: %v", err)
+	}
+
+	log.Printf("【%s】文件被下载: %s", s.StorageDir, req.Filename)
+	return &api.DownloadResponse{Content: content}, nil
+}

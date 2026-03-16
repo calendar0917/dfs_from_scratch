@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MasterService_RegisterNode_FullMethodName = "/api.MasterService/RegisterNode"
-	MasterService_AssignVolume_FullMethodName = "/api.MasterService/AssignVolume"
+	MasterService_RegisterNode_FullMethodName    = "/api.MasterService/RegisterNode"
+	MasterService_AssignVolume_FullMethodName    = "/api.MasterService/AssignVolume"
+	MasterService_GetFileLocation_FullMethodName = "/api.MasterService/GetFileLocation"
 )
 
 // MasterServiceClient is the client API for MasterService service.
@@ -32,6 +33,7 @@ type MasterServiceClient interface {
 	// Volume 启动时向 Master 注册（心跳基础）
 	RegisterNode(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	AssignVolume(ctx context.Context, in *AssignVolumeRequest, opts ...grpc.CallOption) (*AssignVolumeResponse, error)
+	GetFileLocation(ctx context.Context, in *FileLocationRequest, opts ...grpc.CallOption) (*FileLocationResponse, error)
 }
 
 type masterServiceClient struct {
@@ -62,6 +64,16 @@ func (c *masterServiceClient) AssignVolume(ctx context.Context, in *AssignVolume
 	return out, nil
 }
 
+func (c *masterServiceClient) GetFileLocation(ctx context.Context, in *FileLocationRequest, opts ...grpc.CallOption) (*FileLocationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FileLocationResponse)
+	err := c.cc.Invoke(ctx, MasterService_GetFileLocation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MasterServiceServer is the server API for MasterService service.
 // All implementations must embed UnimplementedMasterServiceServer
 // for forward compatibility.
@@ -71,6 +83,7 @@ type MasterServiceServer interface {
 	// Volume 启动时向 Master 注册（心跳基础）
 	RegisterNode(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	AssignVolume(context.Context, *AssignVolumeRequest) (*AssignVolumeResponse, error)
+	GetFileLocation(context.Context, *FileLocationRequest) (*FileLocationResponse, error)
 	mustEmbedUnimplementedMasterServiceServer()
 }
 
@@ -86,6 +99,9 @@ func (UnimplementedMasterServiceServer) RegisterNode(context.Context, *RegisterR
 }
 func (UnimplementedMasterServiceServer) AssignVolume(context.Context, *AssignVolumeRequest) (*AssignVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AssignVolume not implemented")
+}
+func (UnimplementedMasterServiceServer) GetFileLocation(context.Context, *FileLocationRequest) (*FileLocationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFileLocation not implemented")
 }
 func (UnimplementedMasterServiceServer) mustEmbedUnimplementedMasterServiceServer() {}
 func (UnimplementedMasterServiceServer) testEmbeddedByValue()                       {}
@@ -144,6 +160,24 @@ func _MasterService_AssignVolume_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MasterService_GetFileLocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FileLocationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterServiceServer).GetFileLocation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MasterService_GetFileLocation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServiceServer).GetFileLocation(ctx, req.(*FileLocationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MasterService_ServiceDesc is the grpc.ServiceDesc for MasterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -159,13 +193,18 @@ var MasterService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "AssignVolume",
 			Handler:    _MasterService_AssignVolume_Handler,
 		},
+		{
+			MethodName: "GetFileLocation",
+			Handler:    _MasterService_GetFileLocation_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "api/dfs.proto",
 }
 
 const (
-	VolumeService_UploadFile_FullMethodName = "/api.VolumeService/UploadFile"
+	VolumeService_UploadFile_FullMethodName   = "/api.VolumeService/UploadFile"
+	VolumeService_DownloadFile_FullMethodName = "/api.VolumeService/DownloadFile"
 )
 
 // VolumeServiceClient is the client API for VolumeService service.
@@ -176,6 +215,7 @@ const (
 type VolumeServiceClient interface {
 	// 基础上传：简单起见，先实现小文件上传，不搞流式传输（Stream）
 	UploadFile(ctx context.Context, in *UploadRequest, opts ...grpc.CallOption) (*UploadResponse, error)
+	DownloadFile(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (*DownloadResponse, error)
 }
 
 type volumeServiceClient struct {
@@ -196,6 +236,16 @@ func (c *volumeServiceClient) UploadFile(ctx context.Context, in *UploadRequest,
 	return out, nil
 }
 
+func (c *volumeServiceClient) DownloadFile(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (*DownloadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DownloadResponse)
+	err := c.cc.Invoke(ctx, VolumeService_DownloadFile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VolumeServiceServer is the server API for VolumeService service.
 // All implementations must embed UnimplementedVolumeServiceServer
 // for forward compatibility.
@@ -204,6 +254,7 @@ func (c *volumeServiceClient) UploadFile(ctx context.Context, in *UploadRequest,
 type VolumeServiceServer interface {
 	// 基础上传：简单起见，先实现小文件上传，不搞流式传输（Stream）
 	UploadFile(context.Context, *UploadRequest) (*UploadResponse, error)
+	DownloadFile(context.Context, *DownloadRequest) (*DownloadResponse, error)
 	mustEmbedUnimplementedVolumeServiceServer()
 }
 
@@ -216,6 +267,9 @@ type UnimplementedVolumeServiceServer struct{}
 
 func (UnimplementedVolumeServiceServer) UploadFile(context.Context, *UploadRequest) (*UploadResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UploadFile not implemented")
+}
+func (UnimplementedVolumeServiceServer) DownloadFile(context.Context, *DownloadRequest) (*DownloadResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DownloadFile not implemented")
 }
 func (UnimplementedVolumeServiceServer) mustEmbedUnimplementedVolumeServiceServer() {}
 func (UnimplementedVolumeServiceServer) testEmbeddedByValue()                       {}
@@ -256,6 +310,24 @@ func _VolumeService_UploadFile_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VolumeService_DownloadFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DownloadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VolumeServiceServer).DownloadFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VolumeService_DownloadFile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VolumeServiceServer).DownloadFile(ctx, req.(*DownloadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VolumeService_ServiceDesc is the grpc.ServiceDesc for VolumeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -266,6 +338,10 @@ var VolumeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UploadFile",
 			Handler:    _VolumeService_UploadFile_Handler,
+		},
+		{
+			MethodName: "DownloadFile",
+			Handler:    _VolumeService_DownloadFile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
