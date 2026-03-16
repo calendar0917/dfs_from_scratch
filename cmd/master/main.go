@@ -27,7 +27,7 @@ func main() {
 
 	// 初始化 Master 逻辑层
 	// 注意：这里一定要用之前写的 NewMasterServer()，确保内部的 map 被初始化了
-	masterLogic := service.NewMasterServer()
+	masterLogic := service.NewMasterServer("persist.log")
 
 	// 将逻辑注册到 gRPC 服务中
 	api.RegisterMasterServiceServer(s, masterLogic)

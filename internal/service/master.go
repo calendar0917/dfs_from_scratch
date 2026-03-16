@@ -39,17 +39,38 @@ func (s *MasterServer) SaveToDisk() error {
 	if err != nil {
 		return err
 	}
-	// 原子性写入：会先写个临时文件再 Rename，防止写入一半断电
+	// 原子性写入，这里先直接写，但是通常会先写个临时文件再 Rename，防止写入一半断电
 	return os.WriteFile(s.persistPath, data, 0o644)
 }
 
+// 启动时加载
+func (s *MasterServer) loadFromDisk() {
+	data, err := os.ReadFile(s.persistPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Println("未发现历史元数据，开启新账本")
+			return
+		}
+		log.Printf("加载元数据失败: %v", err)
+		return
+	}
+
+	if err := json.Unmarshal(data, &s.fileMetadata); err != nil {
+		log.Printf("解析元数据失败: %v", err)
+		return
+	}
+	log.Printf("已从磁盘恢复 %d 条文件元数据", len(s.fileMetadata))
+}
+
 // NewMasterServer 是“构造函数”模式，确保 Map 被正确初始化
-func NewMasterServer() *MasterServer {
+func NewMasterServer(dbPath string) *MasterServer {
 	s := &MasterServer{
 		nodes:        make(map[string]*NodeInfo),
 		fileMetadata: make(map[string][]string),
+		persistPath:  dbPath,
 	}
 	// 启动心跳检查协程
+	s.loadFromDisk()
 	go s.startHealthChecker()
 	return s
 }
@@ -153,6 +174,11 @@ func (s *MasterServer) AssignVolume(ctx context.Context, req *api.AssignVolumeRe
 	// 记录元数据
 	s.fileMetadata[req.Filename] = pickedAddresses
 	log.Printf("[调度] 文件 %s 分配链路: %v", req.Filename, pickedAddresses)
+	// 持久化到磁盘
+	if err := s.SaveToDisk(); err != nil {
+		log.Printf("元数据持久化失败: %v", err)
+		// 思考题：这里如果存盘失败，应不应该给客户端返回错误？
+	}
 	return &api.AssignVolumeResponse{
 		Address: pickedAddresses, // 注意：proto 里现在是 repeated，对应切片
 		Token:   "todo-token",
