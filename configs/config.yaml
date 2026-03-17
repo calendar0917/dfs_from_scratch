@@ -1,0 +1,9 @@
+# 定义监听端口
+master:
+  port: 50051
+  storage_path: "./data/master"
+
+volume:
+  id: "vol-1"
+  port: 50052
+  master_addr: "localhost:50051"
