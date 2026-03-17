@@ -176,24 +176,34 @@ func TestAssignVolume(t *testing.T) {
 			registerTestNode(t, s, fmt.Sprintf("v%d", i), fmt.Sprintf("127.0.0.1:%d", 50051+i))
 		}
 
-		// 多次分配，检查是否轮询
-		assignments := make(map[string]int)
+		// 多次分配，检查一致性哈希的分布
+		// 相同文件名应分配到相同节点
+		fileAssignments := make(map[string][]string)
 		for i := 0; i < 10; i++ {
-			resp, err := s.AssignVolume(ctx, &api.AssignVolumeRequest{
-				Filename: fmt.Sprintf("file%d.txt", i),
-			})
+			filename := fmt.Sprintf("file%d.txt", i)
+			resp, err := s.AssignVolume(ctx, &api.AssignVolumeRequest{Filename: filename})
 			if err != nil {
 				t.Fatalf("分配失败: %v", err)
 			}
-			for _, addr := range resp.Address {
-				assignments[addr]++
-			}
+			fileAssignments[filename] = resp.Address
 		}
 
-		// 检查负载是否分散
-		for addr, count := range assignments {
-			if count < 3 {
-				t.Errorf("节点 %s 分配次数过少: %d", addr, count)
+		// 检查相同文件名多次分配结果一致（一致性哈希特性）
+		for filename, addrs := range fileAssignments {
+			resp, err := s.AssignVolume(ctx, &api.AssignVolumeRequest{Filename: filename})
+			if err != nil {
+				t.Fatalf("重复分配失败: %v", err)
+			}
+			// 第一次分配的节点应在结果中
+			found := false
+			for _, a := range addrs {
+				if resp.Address[0] == a {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("文件 %s 重复分配结果不一致", filename)
 			}
 		}
 	})

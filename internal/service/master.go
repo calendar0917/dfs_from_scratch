@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"go-dfs/api"
+	"go-dfs/internal/hash"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,7 +32,6 @@ const (
 type NodeInfo struct {
 	Address      string
 	LastSeenTime time.Time
-	nodeIndex    int
 }
 
 // MasterServer 实现 Master 服务
@@ -41,11 +40,10 @@ type MasterServer struct {
 
 	mu           sync.RWMutex
 	nodes        map[string]*NodeInfo
-	nodeList     []string
-	index        int
 	fileMetadata map[string][]string
 	persistPath  string
 	replication  int
+	hashRing     *hash.ConsistentHash // 一致性哈希环
 }
 
 // NewMasterServer 创建 MasterServer 实例
@@ -55,6 +53,7 @@ func NewMasterServer(dbPath string) *MasterServer {
 		fileMetadata: make(map[string][]string),
 		persistPath:  dbPath,
 		replication:  defaultReplicationFactor,
+		hashRing:     hash.NewConsistentHash(150),
 	}
 	s.loadFromDisk()
 	go s.startHealthChecker()
@@ -141,23 +140,10 @@ func (s *MasterServer) removeNode(id string) {
 
 	log.Printf("节点 %s 心跳超时，执行剔除", id)
 
-	lastIdx := len(s.nodeList) - 1
-	if lastIdx < 0 {
-		return
-	}
+	// 从一致性哈希环移除
+	s.hashRing.Remove(info.Address)
 
-	targetIdx := info.nodeIndex
-	lastID := s.nodeList[lastIdx]
-
-	// 交换删除：将最后一个元素移到被删除位置
-	if targetIdx != lastIdx {
-		s.nodeList[targetIdx] = lastID
-		if lastNode, ok := s.nodes[lastID]; ok {
-			lastNode.nodeIndex = targetIdx
-		}
-	}
-
-	s.nodeList = s.nodeList[:lastIdx]
+	// 从节点映射中删除
 	delete(s.nodes, id)
 }
 
@@ -174,16 +160,19 @@ func (s *MasterServer) RegisterNode(ctx context.Context, req *api.RegisterReques
 	if !exists {
 		// 新节点注册
 		log.Printf("[新节点注册] ID=%s, 地址=%s", req.NodeId, req.Address)
-		s.nodeList = append(s.nodeList, req.NodeId)
 		s.nodes[req.NodeId] = &NodeInfo{
 			Address:      req.Address,
 			LastSeenTime: time.Now(),
-			nodeIndex:    len(s.nodeList) - 1,
 		}
+		// 添加到一致性哈希环
+		s.hashRing.Add(req.Address)
 	} else {
 		// 心跳更新
 		if info.Address != req.Address {
 			log.Printf("[节点地址变更] ID: %s, %s -> %s", req.NodeId, info.Address, req.Address)
+			// 从哈希环移除旧地址，添加新地址
+			s.hashRing.Remove(info.Address)
+			s.hashRing.Add(req.Address)
 			info.Address = req.Address
 		}
 		info.LastSeenTime = time.Now()
@@ -201,7 +190,7 @@ func (s *MasterServer) AssignVolume(ctx context.Context, req *api.AssignVolumeRe
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	nodeCount := len(s.nodeList)
+	nodeCount := s.hashRing.NodeCount()
 	if nodeCount == 0 {
 		return nil, status.Error(codes.Unavailable, "没有可用的存储节点")
 	}
@@ -212,21 +201,10 @@ func (s *MasterServer) AssignVolume(ctx context.Context, req *api.AssignVolumeRe
 			"可用节点不足(仅有 %d 个)，无法满足 %d 副本要求", nodeCount, replicationFactor)
 	}
 
-	// 轮询选择节点，确保副本分布在不同节点
-	pickedAddresses := make([]string, 0, replicationFactor)
-	seen := make(map[int]bool)
-
-	for len(pickedAddresses) < replicationFactor {
-		idx := s.index % nodeCount
-		if seen[idx] {
-			// 避免重复选择同一节点
-			s.index++
-			continue
-		}
-		seen[idx] = true
-		id := s.nodeList[idx]
-		pickedAddresses = append(pickedAddresses, s.nodes[id].Address)
-		s.index++
+	// 使用一致性哈希选择节点
+	pickedAddresses := s.hashRing.GetN(req.Filename, replicationFactor)
+	if len(pickedAddresses) == 0 {
+		return nil, status.Error(codes.Unavailable, "无法分配存储节点")
 	}
 
 	// 记录元数据
@@ -260,16 +238,15 @@ func (s *MasterServer) GetFileLocation(ctx context.Context, req *api.FileLocatio
 		return nil, status.Error(codes.NotFound, "文件不存在")
 	}
 
-	// 随机选择一个副本
-	selectedAddr := addrs[rand.Intn(len(addrs))]
-	return &api.FileLocationResponse{Address: selectedAddr}, nil
+	// 返回第一个副本（主副本）
+	return &api.FileLocationResponse{Address: addrs[0]}, nil
 }
 
 // GetNodeCount 返回当前节点数（用于测试）
 func (s *MasterServer) GetNodeCount() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return len(s.nodeList)
+	return s.hashRing.NodeCount()
 }
 
 // generateToken 生成简单令牌
