@@ -3,27 +3,24 @@
 ## 已完成 ✅
 
 - [x] 代码优化（master.go、volume.go、client/main.go）
-- [x] 单元测试（master_test.go）
-- [x] 基础功能验证
+- [x] Master 单元测试（master_test.go）
+- [x] Volume 单元测试（volume_test.go）
+- [x] 单测教学文档（docs/testing-guide.md）
 
 ---
 
 ## 待完成 📋
 
-### 1. 单元测试完善 [优先级: 高]
-- [ ] 添加 volume_test.go
-  - 测试 UploadFile 正常流程
-  - 测试 DownloadFile 正常流程
-  - 测试元数据缺失场景
-  - 测试文件不存在场景
-  - 测试链式转发
-- [ ] 添加集成测试
-  - 启动真实 gRPC 服务
-  - 端到端上传下载测试
-  - 多节点场景测试
-- [ ] 添加 mock 测试
-  - 使用 mock 测试 gRPC 客户端
-  - 模拟网络超时场景
+### 1. 集成测试 [优先级: 高]
+- [ ] 创建 integration_test.go
+  - 启动真实 Master gRPC 服务
+  - 启动真实 Volume gRPC 服务
+  - 测试完整上传流程
+  - 测试完整下载流程
+  - 测试多节点场景
+- [ ] 使用 bufconn 进行内存通信测试
+  - 避免占用真实端口
+  - 加速测试执行
 
 ### 2. 一致性哈希 [优先级: 高]
 - [ ] 调研 consistent hashing 算法
@@ -95,11 +92,16 @@
 - 文章: https://go.dev/blog/pipelines
 - 书籍: Go Concurrency Patterns
 
+### 测试
+- 本项目文档: docs/testing-guide.md
+- Go 官方: https://go.dev/doc/tutorial/add-a-test
+- 高级测试: https://go.dev/blog/subtests
+
 ---
 
 ## 执行建议
 
-1. 先完成单元测试，确保基础功能稳定
+1. 先完成集成测试，确保端到端功能稳定
 2. 再实现一致性哈希，解决节点扩展问题
 3. 并发优化和连接池可以并行进行
 4. 最后做压测，验证优化效果
