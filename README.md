@@ -19,6 +19,8 @@ See [README_EN.md](README_EN.md)
 - 连接池
 - 性能优化
 
+[png](./pic1.png)
+
 ---
 
 ## 架构设计
