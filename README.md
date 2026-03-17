@@ -19,7 +19,6 @@ See [README_EN.md](README_EN.md)
 - 连接池
 - 性能优化
 
-[png](./pic1.png)
 
 ---
 
@@ -169,7 +168,7 @@ go-dfs/
 
 ## 运行截图
 
-（此处放置运行截图）
+![运行截图](./pic1.png)
 
 ---
 
