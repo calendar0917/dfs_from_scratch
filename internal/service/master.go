@@ -18,14 +18,10 @@ import (
 )
 
 const (
-	// 默认副本数
 	defaultReplicationFactor = 3
-	// 心跳超时时间
-	heartbeatTimeout = 10 * time.Second
-	// 健康检查间隔
-	healthCheckInterval = 2 * time.Second
-	// 元数据持久化文件权限
-	persistFileMode = 0o644
+	heartbeatTimeout         = 10 * time.Second
+	healthCheckInterval      = 2 * time.Second
+	persistFileMode          = 0o644
 )
 
 // NodeInfo 存储节点信息
@@ -38,44 +34,61 @@ type NodeInfo struct {
 type MasterServer struct {
 	api.UnimplementedMasterServiceServer
 
-	mu           sync.RWMutex
-	nodes        map[string]*NodeInfo
-	fileMetadata map[string][]string
+	nodes        sync.Map // map[string]*NodeInfo
+	fileMetadata sync.Map // map[string][]string
+	
 	persistPath  string
 	replication  int
-	hashRing     *hash.ConsistentHash // 一致性哈希环
+	hashRing     *hash.ConsistentHash
+	
+	// 持久化控制
+	persistMu     sync.Mutex
+	persistDirty  bool
+	persistStopCh chan struct{}
 }
 
 // NewMasterServer 创建 MasterServer 实例
 func NewMasterServer(dbPath string) *MasterServer {
 	s := &MasterServer{
-		nodes:        make(map[string]*NodeInfo),
-		fileMetadata: make(map[string][]string),
-		persistPath:  dbPath,
-		replication:  defaultReplicationFactor,
-		hashRing:     hash.NewConsistentHash(150),
+		persistPath:   dbPath,
+		replication:   defaultReplicationFactor,
+		hashRing:      hash.NewConsistentHash(150),
+		persistStopCh: make(chan struct{}),
 	}
-	s.loadFromDisk()
+	
+	// 从非内存路径加载数据
+	if dbPath != ":memory:" {
+		s.loadFromDisk()
+	}
+	
 	go s.startHealthChecker()
+	go s.startBackgroundPersister()
 	return s
 }
 
 // SaveToDisk 持久化元数据到磁盘
 func (s *MasterServer) SaveToDisk() error {
-	s.mu.RLock()
-	data, err := json.Marshal(s.fileMetadata)
-	s.mu.RUnlock()
+	if s.persistPath == ":memory:" {
+		return nil
+	}
+	
+	// 快速收集数据
+	metadata := make(map[string][]string)
+	s.fileMetadata.Range(func(key, value interface{}) bool {
+		metadata[key.(string)] = value.([]string)
+		return true
+	})
+	
+	data, err := json.Marshal(metadata)
 	if err != nil {
 		return err
 	}
 
-	// 确保目录存在
 	dir := filepath.Dir(s.persistPath)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 
-	// 原子写入：先写临时文件再重命名
 	tmpPath := s.persistPath + ".tmp"
 	if err := os.WriteFile(tmpPath, data, persistFileMode); err != nil {
 		return err
@@ -95,11 +108,53 @@ func (s *MasterServer) loadFromDisk() {
 		return
 	}
 
-	if err := json.Unmarshal(data, &s.fileMetadata); err != nil {
+	var metadata map[string][]string
+	if err := json.Unmarshal(data, &metadata); err != nil {
 		log.Printf("解析元数据失败: %v", err)
 		return
 	}
-	log.Printf("已从磁盘恢复 %d 条文件元数据", len(s.fileMetadata))
+	
+	for k, v := range metadata {
+		s.fileMetadata.Store(k, v)
+	}
+	log.Printf("已从磁盘恢复 %d 条文件元数据", len(metadata))
+}
+
+// startBackgroundPersister 后台定期持久化
+func (s *MasterServer) startBackgroundPersister() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	
+	for {
+		select {
+		case <-ticker.C:
+			s.persistIfDirty()
+		case <-s.persistStopCh:
+			return
+		}
+	}
+}
+
+// persistIfDirty 如果有变更则持久化
+func (s *MasterServer) persistIfDirty() {
+	s.persistMu.Lock()
+	if !s.persistDirty {
+		s.persistMu.Unlock()
+		return
+	}
+	s.persistDirty = false
+	s.persistMu.Unlock()
+	
+	if err := s.SaveToDisk(); err != nil {
+		log.Printf("元数据持久化失败: %v", err)
+	}
+}
+
+// markDirty 标记需要持久化
+func (s *MasterServer) markDirty() {
+	s.persistMu.Lock()
+	s.persistDirty = true
+	s.persistMu.Unlock()
 }
 
 // startHealthChecker 启动心跳检查协程
@@ -114,17 +169,17 @@ func (s *MasterServer) startHealthChecker() {
 
 // checkNodeHealth 检查节点健康状态
 func (s *MasterServer) checkNodeHealth() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	now := time.Now()
 	var expiredIDs []string
-
-	for id, info := range s.nodes {
+	
+	s.nodes.Range(func(key, value interface{}) bool {
+		id := key.(string)
+		info := value.(*NodeInfo)
 		if now.Sub(info.LastSeenTime) > heartbeatTimeout {
 			expiredIDs = append(expiredIDs, id)
 		}
-	}
+		return true
+	})
 
 	for _, id := range expiredIDs {
 		s.removeNode(id)
@@ -133,18 +188,17 @@ func (s *MasterServer) checkNodeHealth() {
 
 // removeNode 从集群中移除节点
 func (s *MasterServer) removeNode(id string) {
-	info, ok := s.nodes[id]
+	value, ok := s.nodes.Load(id)
 	if !ok {
 		return
 	}
-
+	
+	info := value.(*NodeInfo)
 	log.Printf("节点 %s 心跳超时，执行剔除", id)
-
-	// 从一致性哈希环移除
+	
 	s.hashRing.Remove(info.Address)
-
-	// 从节点映射中删除
-	delete(s.nodes, id)
+	s.nodes.Delete(id)
+	s.markDirty()
 }
 
 // RegisterNode 注册节点或处理心跳
@@ -153,27 +207,24 @@ func (s *MasterServer) RegisterNode(ctx context.Context, req *api.RegisterReques
 		return nil, status.Error(codes.InvalidArgument, "node_id 和 address 不能为空")
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	info, exists := s.nodes[req.NodeId]
+	value, exists := s.nodes.Load(req.NodeId)
+	
 	if !exists {
-		// 新节点注册
 		log.Printf("[新节点注册] ID=%s, 地址=%s", req.NodeId, req.Address)
-		s.nodes[req.NodeId] = &NodeInfo{
+		s.nodes.Store(req.NodeId, &NodeInfo{
 			Address:      req.Address,
 			LastSeenTime: time.Now(),
-		}
-		// 添加到一致性哈希环
+		})
 		s.hashRing.Add(req.Address)
+		s.markDirty()
 	} else {
-		// 心跳更新
+		info := value.(*NodeInfo)
 		if info.Address != req.Address {
 			log.Printf("[节点地址变更] ID: %s, %s -> %s", req.NodeId, info.Address, req.Address)
-			// 从哈希环移除旧地址，添加新地址
 			s.hashRing.Remove(info.Address)
 			s.hashRing.Add(req.Address)
 			info.Address = req.Address
+			s.markDirty()
 		}
 		info.LastSeenTime = time.Now()
 	}
@@ -187,9 +238,6 @@ func (s *MasterServer) AssignVolume(ctx context.Context, req *api.AssignVolumeRe
 		return nil, status.Error(codes.InvalidArgument, "文件名不能为空")
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	nodeCount := s.hashRing.NodeCount()
 	if nodeCount == 0 {
 		return nil, status.Error(codes.Unavailable, "没有可用的存储节点")
@@ -201,22 +249,14 @@ func (s *MasterServer) AssignVolume(ctx context.Context, req *api.AssignVolumeRe
 			"可用节点不足(仅有 %d 个)，无法满足 %d 副本要求", nodeCount, replicationFactor)
 	}
 
-	// 使用一致性哈希选择节点
 	pickedAddresses := s.hashRing.GetN(req.Filename, replicationFactor)
 	if len(pickedAddresses) == 0 {
 		return nil, status.Error(codes.Unavailable, "无法分配存储节点")
 	}
 
-	// 记录元数据
-	s.fileMetadata[req.Filename] = pickedAddresses
+	s.fileMetadata.Store(req.Filename, pickedAddresses)
 	log.Printf("[调度] 文件 %s 分配链路: %v", req.Filename, pickedAddresses)
-
-	// 异步持久化
-	go func() {
-		if err := s.SaveToDisk(); err != nil {
-			log.Printf("元数据持久化失败: %v", err)
-		}
-	}()
+	s.markDirty()
 
 	return &api.AssignVolumeResponse{
 		Address: pickedAddresses,
@@ -230,22 +270,21 @@ func (s *MasterServer) GetFileLocation(ctx context.Context, req *api.FileLocatio
 		return nil, status.Error(codes.InvalidArgument, "文件名不能为空")
 	}
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	addrs, ok := s.fileMetadata[req.Filename]
-	if !ok || len(addrs) == 0 {
+	value, ok := s.fileMetadata.Load(req.Filename)
+	if !ok {
 		return nil, status.Error(codes.NotFound, "文件不存在")
 	}
 
-	// 返回第一个副本（主副本）
+	addrs := value.([]string)
+	if len(addrs) == 0 {
+		return nil, status.Error(codes.NotFound, "文件不存在")
+	}
+
 	return &api.FileLocationResponse{Address: addrs[0]}, nil
 }
 
 // GetNodeCount 返回当前节点数（用于测试）
 func (s *MasterServer) GetNodeCount() int {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.hashRing.NodeCount()
 }
 

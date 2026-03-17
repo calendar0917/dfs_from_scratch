@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"go-dfs/api"
+	"go-dfs/internal/pool"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -24,6 +25,39 @@ const (
 type VolumeServer struct {
 	api.UnimplementedVolumeServiceServer
 	StorageDir string
+	connPool   map[string]*pool.GRPCPool // 地址 -> 连接池
+}
+
+// NewVolumeServer 创建 VolumeServer
+func NewVolumeServer(storageDir string) *VolumeServer {
+	return &VolumeServer{
+		StorageDir: storageDir,
+		connPool:   make(map[string]*pool.GRPCPool),
+	}
+}
+
+// getPool 获取或创建连接池
+func (s *VolumeServer) getPool(address string) (*pool.GRPCPool, error) {
+	if p, ok := s.connPool[address]; ok {
+		return p, nil
+	}
+	
+	// 创建新连接池
+	config := &pool.Config{
+		InitialConn: 1,
+		MaxConn:     5,
+		MaxIdle:     3,
+		ConnTimeout: 5,
+	}
+	
+	p, err := pool.NewGRPCPool(address, config,
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	
+	s.connPool[address] = p
+	return p, nil
 }
 
 // UploadFile 处理文件上传（支持链式复制）
@@ -31,15 +65,15 @@ func (s *VolumeServer) UploadFile(stream api.VolumeService_UploadFileServer) err
 	var nextStream api.VolumeService_UploadFileClient
 	var file *os.File
 	var filename string
-	var conn *grpc.ClientConn
+	var pooledConn *pool.PooledConn
 
 	defer func() {
 		if file != nil {
 			file.Close()
 		}
-		if nextStream != nil {
-			// 确保下游连接也被关闭
-			conn.Close()
+		if pooledConn != nil {
+			// 归还连接到池中
+			pooledConn.Release()
 		}
 	}()
 
@@ -54,7 +88,8 @@ func (s *VolumeServer) UploadFile(stream api.VolumeService_UploadFileServer) err
 
 		switch x := req.Data.(type) {
 		case *api.UploadRequest_Metadata:
-			if err := s.handleMetadata(x.Metadata, &file, &nextStream, &conn); err != nil {
+			pooledConn, err = s.handleMetadata(x.Metadata, &file, &nextStream)
+			if err != nil {
 				return err
 			}
 			filename = x.Metadata.Filename
@@ -72,21 +107,20 @@ func (s *VolumeServer) handleMetadata(
 	metadata *api.Metadata,
 	file **os.File,
 	nextStream *api.VolumeService_UploadFileClient,
-	conn **grpc.ClientConn,
-) error {
+) (*pool.PooledConn, error) {
 	if metadata.Filename == "" {
-		return status.Error(codes.InvalidArgument, "文件名不能为空")
+		return nil, status.Error(codes.InvalidArgument, "文件名不能为空")
 	}
 
 	// 创建本地文件
 	path := filepath.Join(s.StorageDir, metadata.Filename)
 	if err := os.MkdirAll(s.StorageDir, 0o755); err != nil {
-		return status.Errorf(codes.Internal, "创建目录失败: %v", err)
+		return nil, status.Errorf(codes.Internal, "创建目录失败: %v", err)
 	}
 
 	f, err := os.Create(path)
 	if err != nil {
-		return status.Errorf(codes.Internal, "无法创建文件 %s: %v", path, err)
+		return nil, status.Errorf(codes.Internal, "无法创建文件 %s: %v", path, err)
 	}
 	*file = f
 
@@ -95,27 +129,39 @@ func (s *VolumeServer) handleMetadata(
 		nextAddr := metadata.NextTargets[1]
 		metadata.NextTargets = metadata.NextTargets[1:]
 
-		c, err := grpc.NewClient(nextAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		// 使用连接池
+		p, err := s.getPool(nextAddr)
 		if err != nil {
-			return status.Errorf(codes.Internal, "无法连接下游 %s: %v", nextAddr, err)
+			return nil, status.Errorf(codes.Internal, "无法获取连接池 %s: %v", nextAddr, err)
 		}
-		*conn = c
 
-		client := api.NewVolumeServiceClient(c)
+		ctx, cancel := context.WithTimeout(context.Background(), 5)
+		defer cancel()
+		
+		pooledConn, err := p.Get(ctx)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "无法获取连接 %s: %v", nextAddr, err)
+		}
+
+		client := api.NewVolumeServiceClient(pooledConn.ClientConn)
 		ns, err := client.UploadFile(context.Background())
 		if err != nil {
-			return status.Errorf(codes.Internal, "无法开启下游流: %v", err)
+			pooledConn.Release()
+			return nil, status.Errorf(codes.Internal, "无法开启下游流: %v", err)
 		}
 		*nextStream = ns
 
 		if err := ns.Send(&api.UploadRequest{
 			Data: &api.UploadRequest_Metadata{Metadata: metadata},
 		}); err != nil {
-			return status.Errorf(codes.Internal, "转发元数据失败: %v", err)
+			pooledConn.Release()
+			return nil, status.Errorf(codes.Internal, "转发元数据失败: %v", err)
 		}
+		
+		return pooledConn, nil
 	}
 
-	return nil
+	return nil, nil
 }
 
 // handleChunk 处理数据块
@@ -248,4 +294,14 @@ func (s *VolumeServer) DeleteFile(filename string) error {
 		return fmt.Errorf("删除失败: %v", err)
 	}
 	return nil
+}
+
+// ClosePools 关闭所有连接池
+func (s *VolumeServer) ClosePools() {
+	for addr, p := range s.connPool {
+		if err := p.Close(); err != nil {
+			fmt.Printf("关闭连接池 %s 失败: %v\n", addr, err)
+		}
+	}
+	s.connPool = make(map[string]*pool.GRPCPool)
 }
