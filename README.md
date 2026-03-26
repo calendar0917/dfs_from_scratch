@@ -156,6 +156,12 @@ make smoke-test
 make smoke-test-insufficient-nodes
 ```
 
+6. 运行失败路径验证：停止一个节点并等待心跳超时剔除
+
+```bash
+make smoke-test-heartbeat-timeout
+```
+
 ### 底层手工命令
 
 如果需要逐个组件排查，也可以手工启动。
@@ -200,6 +206,8 @@ make smoke-test-insufficient-nodes
 go test ./...
 make build
 make smoke-test
+make smoke-test-insufficient-nodes
+make smoke-test-heartbeat-timeout
 ```
 
 现阶段这些验证可以证明：
@@ -208,6 +216,7 @@ make smoke-test
 - `Master` 的节点注册、分配、心跳剔除等基本行为受测试覆盖
 - `Volume` 的上传、下载、本地文件处理等基本行为受测试覆盖
 - 本地多节点 happy path 可以通过 smoke test 验证
+- 节点不足和心跳超时剔除这两个失败路径已有脚本化验证
 
 现阶段这些验证还不能证明：
 
