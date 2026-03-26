@@ -1,4 +1,4 @@
-.PHONY: all gen build build-master build-volume build-client test test-unit test-bench clean run-master run-volume run-client cluster-start cluster-stop cluster-clean smoke-test smoke-test-insufficient-nodes smoke-test-heartbeat-timeout smoke-test-download-missing help
+.PHONY: all gen build build-master build-volume build-client test test-unit test-bench clean run-master run-volume run-client cluster-start cluster-stop cluster-clean smoke-test smoke-test-insufficient-nodes smoke-test-heartbeat-timeout smoke-test-download-missing smoke-test-master-restart-persistence help
 
 # 变量定义
 PROTO_DIR=api
@@ -93,6 +93,10 @@ smoke-test-download-missing:
 	@echo "Running missing-file download smoke test..."
 	bash tests/smoke/run-download-missing.sh
 
+smoke-test-master-restart-persistence:
+	@echo "Running master-restart persistence smoke test..."
+	bash tests/smoke/run-master-restart-persistence.sh
+
 # 客户端操作
 upload:
 	@echo "Uploading file: $(FILE)"
@@ -142,6 +146,7 @@ help:
 	@echo "  make smoke-test-insufficient-nodes - Verify upload fails with too few volume nodes"
 	@echo "  make smoke-test-heartbeat-timeout - Verify a stopped node is evicted after heartbeat timeout"
 	@echo "  make smoke-test-download-missing - Verify downloading a missing file fails cleanly"
+	@echo "  make smoke-test-master-restart-persistence - Verify metadata survives a Master restart"
 	@echo "  make upload FILE=test.txt  - Upload a file"
 	@echo "  make download FILE=test.txt - Download a file"
 	@echo "  make clean        - Clean build artifacts"
