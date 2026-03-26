@@ -32,3 +32,6 @@ downloaded_*
 
 # Temp files
 *.tmp
+
+# Local private notes
+.local/
