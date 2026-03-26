@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"go-dfs/api"
+	runtimecfg "go-dfs/internal/runtime"
 	"go-dfs/internal/service"
 
 	"google.golang.org/grpc"
@@ -14,10 +15,11 @@ import (
 func main() {
 	// 定义命令行参数，默认监听 50051
 	port := flag.String("port", "50051", "Master 监听端口")
+	persistPath := flag.String("persist", "", "Master 元数据持久化路径")
 	flag.Parse()
 
 	// 开启网络监听
-	lis, err := net.Listen("tcp", ":"+*port)
+	lis, err := runtimecfg.MustListen(net.Listen, "tcp", ":"+*port)
 	if err != nil {
 		log.Fatalf("【Master】网络监听失败: %v", err)
 	}
@@ -27,7 +29,7 @@ func main() {
 
 	// 初始化 Master 逻辑层
 	// 注意：这里一定要用之前写的 NewMasterServer()，确保内部的 map 被初始化了
-	masterLogic := service.NewMasterServer("persist.log")
+	masterLogic := service.NewMasterServer(runtimecfg.ResolveMasterPersistPath(*persistPath))
 
 	// 将逻辑注册到 gRPC 服务中
 	api.RegisterMasterServiceServer(s, masterLogic)

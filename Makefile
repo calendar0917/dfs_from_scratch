@@ -1,4 +1,4 @@
-.PHONY: all gen build build-master build-volume build-client test test-unit test-bench clean run-master run-volume run-client help
+.PHONY: all gen build build-master build-volume build-client test test-unit test-bench clean run-master run-volume run-client cluster-start cluster-stop cluster-clean smoke-test smoke-test-insufficient-nodes help
 
 # 变量定义
 PROTO_DIR=api
@@ -65,6 +65,26 @@ run-volume-3:
 	@echo "Starting Volume-3 on port 50054..."
 	go run cmd/volume/main.go -id=vol-3 -port=50054 -master=$(MASTER_ADDR)
 
+cluster-start:
+	@echo "Starting local cluster..."
+	./scripts/local-cluster-start.sh
+
+cluster-stop:
+	@echo "Stopping local cluster..."
+	./scripts/local-cluster-stop.sh
+
+cluster-clean:
+	@echo "Cleaning local cluster runtime..."
+	./scripts/local-cluster-clean.sh
+
+smoke-test:
+	@echo "Running local smoke test..."
+	bash tests/smoke/run-local.sh
+
+smoke-test-insufficient-nodes:
+	@echo "Running insufficient-nodes smoke test..."
+	bash tests/smoke/run-insufficient-nodes.sh
+
 # 客户端操作
 upload:
 	@echo "Uploading file: $(FILE)"
@@ -107,6 +127,11 @@ help:
 	@echo "  make test-bench   - Run benchmarks"
 	@echo "  make run-master   - Run Master node (dev mode)"
 	@echo "  make run-volume-1 - Run Volume-1 (dev mode)"
+	@echo "  make cluster-start - Start local Master + 3 Volume nodes"
+	@echo "  make cluster-stop  - Stop local cluster processes"
+	@echo "  make cluster-clean - Stop cluster and remove runtime data"
+	@echo "  make smoke-test    - Run local upload/download smoke test"
+	@echo "  make smoke-test-insufficient-nodes - Verify upload fails with too few volume nodes"
 	@echo "  make upload FILE=test.txt  - Upload a file"
 	@echo "  make download FILE=test.txt - Download a file"
 	@echo "  make clean        - Clean build artifacts"

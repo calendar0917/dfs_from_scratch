@@ -28,6 +28,7 @@ Thumbs.db
 data/
 persist.log
 downloaded_*
+/runtime/
 
 # Temp files
 *.tmp

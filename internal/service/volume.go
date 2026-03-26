@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"go-dfs/api"
 	"go-dfs/internal/pool"
@@ -19,6 +20,9 @@ import (
 const (
 	// 默认缓冲区大小 64KB
 	defaultBufferSize = 64 * 1024
+
+	defaultForwardPoolConnTimeout = 5 * time.Second
+	defaultForwardStreamTimeout   = 5 * time.Second
 )
 
 // VolumeServer 实现 Volume 服务
@@ -36,6 +40,15 @@ func NewVolumeServer(storageDir string) *VolumeServer {
 	}
 }
 
+func newForwardPoolConfig() *pool.Config {
+	return &pool.Config{
+		InitialConn: 1,
+		MaxConn:     5,
+		MaxIdle:     3,
+		ConnTimeout: defaultForwardPoolConnTimeout,
+	}
+}
+
 // getPool 获取或创建连接池
 func (s *VolumeServer) getPool(address string) (*pool.GRPCPool, error) {
 	if p, ok := s.connPool[address]; ok {
@@ -43,12 +56,7 @@ func (s *VolumeServer) getPool(address string) (*pool.GRPCPool, error) {
 	}
 	
 	// 创建新连接池
-	config := &pool.Config{
-		InitialConn: 1,
-		MaxConn:     5,
-		MaxIdle:     3,
-		ConnTimeout: 5,
-	}
+	config := newForwardPoolConfig()
 	
 	p, err := pool.NewGRPCPool(address, config,
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -135,7 +143,7 @@ func (s *VolumeServer) handleMetadata(
 			return nil, status.Errorf(codes.Internal, "无法获取连接池 %s: %v", nextAddr, err)
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5)
+		ctx, cancel := context.WithTimeout(context.Background(), defaultForwardStreamTimeout)
 		defer cancel()
 		
 		pooledConn, err := p.Get(ctx)

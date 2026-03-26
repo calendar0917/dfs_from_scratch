@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"go-dfs/api"
+	runtimecfg "go-dfs/internal/runtime"
 	"go-dfs/internal/service"
 
 	"google.golang.org/grpc"
@@ -55,19 +56,27 @@ func registerWithMaster(nodeID, myAddr, masterAddr string) {
 	}
 }
 
+func newVolumeServerForMain(nodeID, storageDir string) *service.VolumeServer {
+	return service.NewVolumeServer(runtimecfg.ResolveVolumeStorageDir(nodeID, storageDir))
+}
+
 func main() {
 	// 用 flag 包来进行参数读取，而不是硬编码
 	nodeID := flag.String("id", "vol-1", "节点唯一标识")
 	port := flag.String("port", "50052", "Volumn 监听端口")
 	masterAddr := flag.String("master", "localhost:50051", "Master 地址")
+	storageDir := flag.String("storage-dir", "", "Volume 本地存储目录")
 	flag.Parse()
 	// 自己先监听端口，然后才能向 Master 注册
-	lis, _ := net.Listen("tcp", ":"+*port)
+	lis, err := runtimecfg.MustListen(net.Listen, "tcp", ":"+*port)
+	if err != nil {
+		log.Fatalf("【Volume】网络监听失败: %v", err)
+	}
 	s := grpc.NewServer()
-	api.RegisterVolumeServiceServer(s, &service.VolumeServer{StorageDir: "./data/" + *nodeID})
+	api.RegisterVolumeServiceServer(s, newVolumeServerForMain(*nodeID, *storageDir))
 	// 用一个协程来进行打印
 	go func() {
-		log.Println("Volume Server %s 启动，监听端口: %s", *nodeID, *port)
+		log.Printf("Volume Server %s 启动，监听端口: %s", *nodeID, *port)
 		if err := s.Serve(lis); err != nil {
 			log.Fatalf("服务崩溃")
 		}
